@@ -1,4 +1,4 @@
-package com.example.mvvmnewsapp.api
+package com.example.mvvmnewsapp.data.api
 
 import com.example.mvvmnewsapp.util.Constants.Companion.BASE_URL
 import okhttp3.OkHttpClient

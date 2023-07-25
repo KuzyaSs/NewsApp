@@ -1,4 +1,4 @@
-package com.example.mvvmnewsapp.api
+package com.example.mvvmnewsapp.data.api
 
 import com.example.mvvmnewsapp.data.model.NewsResponse
 import com.example.mvvmnewsapp.util.Constants.Companion.API_KEY

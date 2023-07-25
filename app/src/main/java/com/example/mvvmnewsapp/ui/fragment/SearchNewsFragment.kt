@@ -5,11 +5,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import com.example.mvvmnewsapp.NewsApplication
 import com.example.mvvmnewsapp.databinding.FragmentSearchNewsBinding
+import com.example.mvvmnewsapp.ui.viewModel.NewsViewModel
 
 class SearchNewsFragment : Fragment() {
     private var _binding: FragmentSearchNewsBinding? = null
     private val binding get() = _binding!!
+
+    private val viewModel: NewsViewModel by activityViewModels {
+        NewsViewModel.NewsViewModelFactory(
+            (activity?.application as NewsApplication).newsRepository
+        )
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
