@@ -15,7 +15,7 @@ class NewsAdapter(private val onItemClicked: (Article) -> Unit) :
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ArticleViewHolder {
         return ArticleViewHolder(
             ItemArticlePreviewBinding.inflate(
-                LayoutInflater.from(parent.context)
+                LayoutInflater.from(parent.context), parent, false
             )
         )
     }
