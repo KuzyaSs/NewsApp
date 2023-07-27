@@ -5,11 +5,16 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AbsListView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.LayoutManager
+import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.example.mvvmnewsapp.NewsApplication
+import com.example.mvvmnewsapp.R
 import com.example.mvvmnewsapp.databinding.FragmentBreakingNewsBinding
 import com.example.mvvmnewsapp.ui.adapter.NewsAdapter
 import com.example.mvvmnewsapp.ui.viewModel.NewsViewModel
@@ -27,6 +32,10 @@ class BreakingNewsFragment : Fragment() {
 
     private lateinit var newsAdapter: NewsAdapter
 
+    private var isScrolling = false
+    private var isLoading = false
+    private var isLastPage = false
+
     private val TAG = "BreakingNewsFragment"
 
     override fun onCreateView(
@@ -40,20 +49,19 @@ class BreakingNewsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupRecyclerView()
+        recyclerViewSetup()
 
-        viewModel.breakingNews.observe(viewLifecycleOwner) { response ->
-            when(response) {
+        viewModel.breakingNews.observe(viewLifecycleOwner) { resourceResponse ->
+            when(resourceResponse) {
                 is Resource.Success -> {
                     hideProgressBar()
-                    response.data?.let { newsResponse ->
+                    resourceResponse.data?.let { newsResponse ->
                         newsAdapter.submitList(newsResponse.articles)
-                        Log.e(TAG, newsResponse.articles[0].description)
                     }
                 }
                 is Resource.Error -> {
                     hideProgressBar()
-                    response.message?.let { errorMessage ->
+                    resourceResponse.message?.let { errorMessage ->
                         Log.e(TAG, "An error occurred: $errorMessage")
                     }
                 }
@@ -64,12 +72,30 @@ class BreakingNewsFragment : Fragment() {
         }
     }
 
-    private fun setupRecyclerView() {
-        newsAdapter = NewsAdapter { }
+    private fun recyclerViewSetup() {
+        newsAdapter = NewsAdapter { article ->
+            val action = BreakingNewsFragmentDirections.actionBreakingNewsFragmentToArticleFragment(article)
+            findNavController().navigate(action)
+        }
 
         binding.recyclerViewBreakingNews.apply {
             adapter = newsAdapter
             layoutManager = LinearLayoutManager(activity)
+        }
+    }
+
+    private fun scrollListenerSetup() {
+        val scrollListener = object : OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+            }
+
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                if (newState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
+                    isScrolling = true
+                }
+            }
         }
     }
 

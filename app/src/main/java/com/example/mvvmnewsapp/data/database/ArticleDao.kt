@@ -1,5 +1,6 @@
 package com.example.mvvmnewsapp.data.database
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -21,5 +22,5 @@ interface ArticleDao {
     suspend fun delete(article: Article)
 
     @Query("SELECT * FROM article")
-    fun getAllArticles(): Flow<List<Article>>
+    fun getAllArticles(): LiveData<List<Article>>
 }
