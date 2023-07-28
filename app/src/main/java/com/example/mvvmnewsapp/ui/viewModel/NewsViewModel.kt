@@ -1,27 +1,37 @@
 package com.example.mvvmnewsapp.ui.viewModel
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
+import android.net.NetworkCapabilities.TRANSPORT_ETHERNET
+import android.net.NetworkCapabilities.TRANSPORT_WIFI
+import android.os.Build
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.mvvmnewsapp.NewsApplication
 import com.example.mvvmnewsapp.data.model.Article
 import com.example.mvvmnewsapp.data.model.NewsResponse
 import com.example.mvvmnewsapp.data.repository.NewsRepository
 import com.example.mvvmnewsapp.util.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okio.IOException
 import retrofit2.Response
 
 class NewsViewModel(
+    application: NewsApplication,
     private val newsRepository: NewsRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
     val breakingNews: MutableLiveData<Resource<NewsResponse>> = MutableLiveData()
-    private var breakingNewsPage = 1
+    var breakingNewsPage = 1
     private var breakingNewsResponse: NewsResponse? = null
 
     val searchNews: MutableLiveData<Resource<NewsResponse>> = MutableLiveData()
-    private var searchNewsPage = 1
+    var searchNewsPage = 1
     var searchNewsResponse: NewsResponse? = null
 
     val savedArticles: LiveData<List<Article>> = newsRepository.getSavedArticles()
@@ -32,17 +42,47 @@ class NewsViewModel(
 
     fun getBreakingNews(countryCode: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            breakingNews.postValue(Resource.Loading())
-            val response = newsRepository.getBreakingNews(countryCode, breakingNewsPage)
-            breakingNews.postValue(handleBreakingNewsResponse(response))
+            safeBreakingNewsCall(countryCode)
+        }
+    }
+
+    private suspend fun safeBreakingNewsCall(countryCode: String) {
+        breakingNews.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()) {
+                val response = newsRepository.getBreakingNews(countryCode, breakingNewsPage)
+                breakingNews.postValue(handleBreakingNewsResponse(response))
+            } else {
+                breakingNews.postValue(Resource.Error(message = "No internet connection"))
+            }
+        } catch (throwable: Throwable) {
+            when(throwable) {
+                is IOException -> breakingNews.postValue(Resource.Error(message = "Network failure"))
+                else -> breakingNews.postValue(Resource.Error(message = "Conversion error"))
+            }
         }
     }
 
     fun getSearchNews(searchQuery: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            searchNews.postValue(Resource.Loading())
-            val response = newsRepository.searchNews(searchQuery, searchNewsPage)
-            searchNews.postValue(handleSearchNewsResponse(response))
+            safeSearchNewsCall(searchQuery)
+        }
+    }
+
+    private suspend fun safeSearchNewsCall(searchQuery: String) {
+        searchNews.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()) {
+                val response = newsRepository.searchNews(searchQuery, searchNewsPage)
+                searchNews.postValue(handleSearchNewsResponse(response))
+            } else {
+                searchNews.postValue(Resource.Error(message = "No internet connection"))
+            }
+        } catch (throwable: Throwable) {
+            when(throwable) {
+                is IOException -> searchNews.postValue(Resource.Error(message = "Network failure"))
+                else -> searchNews.postValue(Resource.Error(message = "Conversion error"))
+            }
         }
     }
 
@@ -68,7 +108,6 @@ class NewsViewModel(
                 searchNewsPage++
                 if (searchNewsResponse == null) {
                     searchNewsResponse = newsResponse
-                    searchNewsPage = 1
                 } else {
                     val newArticles = newsResponse.articles
                     searchNewsResponse?.articles?.addAll(newArticles)
@@ -97,17 +136,29 @@ class NewsViewModel(
         }
     }
 
-    fun getSavedNews() {
-        // Fuck this...
+    private fun hasInternetConnection(): Boolean {
+        val connectivityManager = getApplication<NewsApplication>().getSystemService(
+            Context.CONNECTIVITY_SERVICE
+        ) as ConnectivityManager
+
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        return when {
+            capabilities.hasTransport(TRANSPORT_WIFI) -> true
+            capabilities.hasTransport(TRANSPORT_CELLULAR) -> true
+            capabilities.hasTransport(TRANSPORT_ETHERNET) -> true
+            else -> false
+        }
     }
 
     class NewsViewModelFactory(
+        private val application: NewsApplication,
         private val newsRepository: NewsRepository
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(NewsViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
-                return NewsViewModel(newsRepository) as T
+                return NewsViewModel(application, newsRepository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

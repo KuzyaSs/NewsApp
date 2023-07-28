@@ -22,6 +22,7 @@ class SavedNewsFragment : Fragment() {
 
     private val viewModel: NewsViewModel by activityViewModels {
         NewsViewModel.NewsViewModelFactory(
+            (activity?.application as NewsApplication),
             (activity?.application as NewsApplication).newsRepository
         )
     }
